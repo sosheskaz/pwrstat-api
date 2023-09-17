@@ -1,11 +1,15 @@
-FROM python:3-stretch
-MAINTAINER Daniel Winks
+FROM --platform=$TARGETPLATFORM python:3-bookworm
+MAINTAINER Eric Miller
 
-VOLUME /src
-COPY pwrstat-api.py requirements.txt PPL-*-64bit.deb  powerpanel_*_amd64.deb init.sh /src/
-WORKDIR /src
-RUN chmod +x /src/init.sh
-RUN chmod +x /src/pwrstat-api.py
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
-RUN dpkg -i *.deb
-ENTRYPOINT "/src/init.sh"
+ARG PPL_VERSION=v1.4.1
+
+ARG TARGETARCH
+RUN wget https://dl4jz3rbrsfum.cloudfront.net/software/PPL_64bit_${PPL_VERSION}.deb \
+  && dpkg -i PPL_64bit_${PPL_VERSION}.deb \
+  && rm -f PPL_64bit_${PPL_VERSION}.deb \
+  && pip install --trusted-host pypi.python.org flask flask_restful flask-jsonpify
+COPY pwrstat-api.py init.sh /app/
+COPY --from=instructure/tini /tini /bin/tini
+WORKDIR /app
+ENTRYPOINT ["/bin/tini"]
+CMD ["/app/init.sh"]
